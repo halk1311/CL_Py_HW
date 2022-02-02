@@ -1,0 +1,50 @@
+url = 'https://www.vedomosti.ru/ecology/release/2021/09/01'
+page = rq.get(url)
+page.encoding = 'utf8'
+soup = BeautifulSoup(page.text,'html.parser')
+link_start = 'https://www.vedomosti.ru'
+# основная статья на странице
+main_article_url = soup.find_all('a', {'class':'card-background articles-cards-list__card cols-2 rows-3 --background'})
+# остальне статьи на странице
+other_articles_url = soup.find_all('a', {'class':'articles-cards-list__card card-article cols-1 rows-3 --article'})
+# собираем все в список
+links = []
+for link in main_article_url:
+  links.append(link_start + link.get('href'))
+for link in other_articles_url:
+  links.append(link_start + link.get('href'))
+# заголовки
+def get_title(link):
+  page = rq.get(link)
+  page.encoding = 'utf8'
+  soup = BeautifulSoup(page.text,'html.parser')
+  title = soup.find_all('h1', {'class':'article-headline__title'})[0].text
+  title = title.replace('\n', '').strip()
+  return title
+# подзаголовки
+def get_subtitle(link):
+  page = rq.get(link)
+  page.encoding = 'utf8'
+  soup = BeautifulSoup(page.text,'html.parser')
+  subtitle = soup.find_all('em', {'class':'article-headline__subtitle'})[0].text
+  if '\xa0' in subtitle:
+    subtitle = subtitle.replace('\xa0', '')
+  return subtitle
+# дата и время
+def get_date_time(link):
+  page = rq.get(link)
+  page.encoding = 'utf8'
+  soup = BeautifulSoup(page.text,'html.parser')
+  date_time = soup.find_all('time', {'class':'article-meta__date'})[0].text
+  date_time = date_time.replace('/', '').strip()
+  return date_time
+# сбор словаря
+dict = {}
+for link in links:
+  page = rq.get(link)
+  page.encoding = 'utf8'
+  soup = BeautifulSoup(page.text,'html.parser')
+  dict[link] = [get_date_time(link), get_title(link), get_subtitle(link)]
+articles_pd = pd.DataFrame.from_dict(dict, orient='index', columns=["Дата", "Заголовок", "Текст"])
+# сохранение 
+articles_pd.to_csv('articles_pd.csv') 
